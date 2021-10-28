@@ -17,4 +17,13 @@ class Avo::Fields::HasOneField::ShowComponent < Avo::Fields::ShowComponent
     end
     attach_policy
   end
+
+  def can_edit?
+    reflection_resource = @field.target_resource
+    reflection_resource.present? && reflection_resource.authorization.authorize_action(:edit, raise_exception: false)
+  end
+
+  def edit_path
+    helpers.edit_resource_path(@field.target_resource)
+  end
 end
