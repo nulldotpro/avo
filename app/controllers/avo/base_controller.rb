@@ -113,37 +113,44 @@ module Avo
     def create
       # model gets instantiated and filled in the fill_model method
       fill_model
+
+      @reflection = @model._reflections[params[:via_relation]] if params[:via_resource_id].present?
+      if @reflection&.is_a?(ActiveRecord::Reflection::BelongsToReflection) || @reflection.is_a?(ActiveRecord::Reflection::HasManyReflection)
+        foreign_key = @reflection.foreign_key
+        @model.send("#{foreign_key}=", params[:via_resource_id])
+      end
+
       saved = @model.save
       @resource.hydrate(model: @model, view: :new, user: _current_user)
 
       # This means that the record has been created through another parent record and we need to attach it somehow.
-      if params[:via_resource_id].present?
-        @reflection = @model._reflections[params[:via_relation]]
-        # Figure out what kind of association does the record have with the parent record
+      # if params[:via_resource_id].present?
+      #   @reflection = @model._reflections[params[:via_relation]]
+      #   # Figure out what kind of association does the record have with the parent record
 
-        # belongs_to
-        # has_many
-        # Get the foreign key and set it to the id we received in the params
-        if @reflection.is_a?(ActiveRecord::Reflection::BelongsToReflection) || @reflection.is_a?(ActiveRecord::Reflection::HasManyReflection)
-          foreign_key = @reflection.foreign_key
-          @model.send("#{foreign_key}=", params[:via_resource_id])
-          @model.save
-        end
+      #   # belongs_to
+      #   # has_many
+      #   # Get the foreign key and set it to the id we received in the params
+      #   if @reflection.is_a?(ActiveRecord::Reflection::BelongsToReflection) || @reflection.is_a?(ActiveRecord::Reflection::HasManyReflection)
+      #     foreign_key = @reflection.foreign_key
+      #     @model.send("#{foreign_key}=", params[:via_resource_id])
+      #     @model.save
+      #   end
 
-        # has_one
-        # has_one_through
+      # has_one
+      # has_one_through
 
-        # has_many_through
-        # has_and_belongs_to_many
-        # polymorphic
-        if @reflection.is_a? ActiveRecord::Reflection::ThroughReflection
-          # find the record
-          via_resource = ::Avo::App.get_resource_by_model_name params[:via_relation_class]
-          @related_record = via_resource.model_class.find params[:via_resource_id]
+      # has_many_through
+      # has_and_belongs_to_many
+      # polymorphic
+      if @reflection.is_a? ActiveRecord::Reflection::ThroughReflection
+        # find the record
+        via_resource = ::Avo::App.get_resource_by_model_name params[:via_relation_class]
+        @related_record = via_resource.model_class.find params[:via_resource_id]
 
-          @model.send(params[:via_relation]) << @related_record
-        end
+        @model.send(params[:via_relation]) << @related_record
       end
+      # end
 
       respond_to do |format|
         if saved
